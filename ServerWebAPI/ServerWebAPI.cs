@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -42,112 +43,247 @@ namespace ServerWebAPI
 
         public Response Manage()
         {
-            if (Method == "create")
-            {
-                if (Path == "/api/categories")
-                {
-                    var category = JsonSerializer.Deserialize<Category>(Body, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                    CategoryTable.Add(category);
-                    return new Response(2, category.ToJson());
-                }
-                else
-                {
-                    return new Response(4, "Missing Path");
-                }
-            } 
-            else if (Method == "read")
-            {
-                if (Path == "/api/categories")
-                {
-                    return new Response(1, CategoryTable.Read());
-                }
-                else
-                {
-                    if (Path == null || Path.Length < 16)
-                    {
-                        return new Response(4, "Missing Path");
-                    }
-
-                    var subPath = Path.Substring(0, 16);
-                    try
-                    {
-                        var number = Int32.Parse(Path.Substring(16));
-                        if (subPath == "/api/categories/")
-                        {
-                            return new Response(1, CategoryTable.Read(number));
-                        }
-                        else
-                        {
-                            return new Response(4, "Bad Request");
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        return new Response(4, "Bad Request");
-                    }
-                }
-            }
-            else if (Method == "update")
-            {
-                if (Path == null || Path.Length < 16)
-                {
-                    return new Response(4, "Missing Path");
-                }
-                
-                var subPath = Path.Substring(0, 16);
-                //var number = Int32.Parse(Path.Substring(16));
-
-                if (subPath == "/api/categories/")
-                {
-                    CategoryTable.Update(JsonSerializer.Deserialize<Category>(Body, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-                    return new Response(1, "Updated");
-                }
-                else
-                {
-                    return new Response(3, "Bad Request");
-                }
-            }
-            else if (Method == "delete")
-            {
-                if (Path == null || Path.Length < 16)
-                {
-                    return new Response(4, "Missing Path");
-                }
-
-                var subPath = Path.Substring(0, 16);
-                try
-                {
-                    var number = Int32.Parse(Path.Substring(16));
-                    if (subPath == "/api/categories/")
-                    {
-                        CategoryTable.Delete(number);
-                        return new Response(1, "Deleted");
-                    }
-                    else
-                    {
-                        return new Response(3, "Updated");
-                    }
-                }
-                catch (Exception e)
-                {
-                    return new Response(4, "Bad Request");
-                }
-            }
-            else if (Method == "echo")
+            if (Method == "echo")
             {
                 if (Date == null)
                 {
-                    return new Response(4, "Missing Date");
+                    return new Response("4 Missing Resource", null);
                 }
                 else
                 {
-                    return new Response(4, Body);
+                    if (Body == null)
+                    {
+                        return new Response("4 Missing Body", null);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            Int32.Parse(Date);
+                            return new Response("4", Body);
+                        }
+                        catch (Exception)
+                        {
+                            return new Response("4 Illegal Date", Body);
+                        }
+                    }
                 }
             }
             else
-            {
-                return new Response(4, "Missing Method");
+            {   
+                if (Date == null)
+                {
+                    if (Method == null)
+                    {
+                        return new Response("4 Missing Date, Missing Method", null);
+                    }
+                    else
+                    {
+                        return new Response("4 Missing Date", null);
+                    }
+                }
+                else if (Method == null)
+                {
+                    return new Response("4 Missing Method", null);
+                }
+                else
+                {
+                    try
+                    {
+                        Int32.Parse(Date);
+                    }
+                    catch (Exception)
+                    {
+                        return new Response("4 Illegal Date", null);
+                    }
+
+                    if (Method == "create")
+                    {
+                        if (Path == "/api/categories")
+                        {
+                            if (Body == null)
+                            {
+                                return new Response("4 Missing Body", null);
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    var category = JsonSerializer.Deserialize<Category>(Body, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                    CategoryTable.Add(category);
+                                    return new Response("2", category.ToJson());
+                                }
+                                catch (Exception)
+                                {
+                                    return new Response("4 Illegal Body", "The Body doesn't correspond to a Json Category");
+                                }
+                                
+                            }
+                        }
+                        else
+                        {
+                            if (Body == null)
+                            {
+                                return new Response("4 Missing Resource, Missing Body", null);
+                            }
+                            else
+                            {
+                                if (Path == null)
+                                    return new Response("4 Missing Resource, Missing Path", null);
+                                return new Response("4 Bad Request", null);
+                            }
+                        }
+                    }
+                    else if (Method == "read")
+                    {
+                        if (Path == "/api/categories")
+                        {
+                            return new Response("1 Ok", CategoryTable.Read());
+                        }
+                        else
+                        {
+                            if (Path == null)
+                            {
+                                return new Response("4 Missing Resource, Missing Path", null);
+                            }
+                            else if (Path.Length < 16)
+                            {
+                                return new Response("4 Bad Request", null);
+                            }
+
+                            var subPath = Path.Substring(0, 16);
+                            try
+                            {
+                                var number = Int32.Parse(Path.Substring(16));
+                                if (subPath == "/api/categories/")
+                                {
+                                    if (CategoryTable.Exist(number))
+                                        return new Response("1 Ok", CategoryTable.Read(number));
+                                    else
+                                        return new Response("5 Not Found", null);
+                                }
+                                else
+                                {
+                                    return new Response("4 Bad Request", null);
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                return new Response("4 Bad Request", null);
+                            }
+                        }
+                    }
+                    else if (Method == "update")
+                    {
+                        if (Body == null)
+                        {
+                            if (Path == null)
+                            {
+                                return new Response("4 Missing Body, Missing Path, Missing Resource", null);
+                            }
+                            else
+                            {
+                                return new Response("4 Missing Body, Missing Resource", null);
+                            }
+                        }
+                        else
+                        {
+                            if (Path == null)
+                            {
+                                return new Response("4 Missing Path, Missing Resource", null);
+                            }
+                            else if (Path.Length < 16)
+                            {
+                                return new Response("4 Bad Request", null);
+                            }
+                            else
+                            {
+
+                                var subPathUp = Path.Substring(0, 16);
+                                try
+                                {
+                                    var numberUp = Int32.Parse(Path.Substring(16));
+                                    if (subPathUp == "/api/categories/")
+                                    {
+                                        try
+                                        {
+                                            var category = JsonSerializer.Deserialize<Category>(Body, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                            if (category.Id == numberUp)
+                                            {
+                                                if (CategoryTable.Exist(numberUp))
+                                                {
+                                                    CategoryTable.Update(category);
+                                                    return new Response("3 Updated", category.ToJson());
+                                                }
+                                                else
+                                                {
+                                                    return new Response("4 Bad Request", null);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                return new Response("5 Not Found", null);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            return new Response("4 Illegal Body", "The Body doesn't correspond to a Json Category");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return new Response("4 Bad Request", null);
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    return new Response("4 Bad Request", null);
+                                }
+                            }
+                        }
+                    }
+                    else if (Method == "delete")
+                    {
+                        if (Path == null)
+                            return new Response("4 Missing Resource, Missing Path", null);
+                        else if (Path.Length < 16)
+                            return new Response("4 Bad Request", null);
+
+                        var subPathDel = Path.Substring(0, 16);
+                        try
+                        {
+                            var numberDel = Int32.Parse(Path.Substring(16));
+                            if (subPathDel == "/api/categories/")
+                            {
+                                if (CategoryTable.Exist(numberDel))
+                                {
+                                    CategoryTable.Delete(numberDel);
+                                    return new Response("1 Ok", null);
+                                }
+                                else
+                                {
+                                    return new Response("5 Not Found", null);
+                                }
+                                
+                            }
+                            else
+                            {
+                                return new Response("4 Bad Request", null);
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            return new Response("4 Bad Request", null);
+                        }
+                    }
+                    else
+                    {
+                        return new Response("4 Illegal Method", null);
+                    }
+                }
             }
+
+            
         }
     }
 
@@ -172,14 +308,13 @@ namespace ServerWebAPI
 
         public static string Read()
         {
-            var ret = "[";
-            foreach (Category cat in CategoryHashtable)
+            var categories = new List<Category>();
+            foreach (DictionaryEntry cat in CategoryHashtable)
             {
-                ret += cat.ToJson() + ",";
+                categories.Insert(0,(Category)cat.Value);
             }
-            ret = ret.Remove(ret.Length - 1);
-            ret += "]";
-            return ret;
+
+            return JsonSerializer.Serialize<List<Category>>(categories, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         }
 
         public static string Read(int i)
@@ -194,6 +329,11 @@ namespace ServerWebAPI
                 return "{}";
             }
         }
+
+        public static bool Exist(int i)
+        {
+            return CategoryHashtable.ContainsKey(i);
+        }
     }
 
     class Response
@@ -201,10 +341,11 @@ namespace ServerWebAPI
         public string Status { get; set; }
         public string Body { get; set; }
 
-        public Response(int s, string b)
+        public Response(string s, string? b)
         {
-            Status = s.ToString();
-            Body = b;
+            Status = s;
+            if (b != null)
+                Body = b;
         }
 
         public string ToJson()
@@ -217,28 +358,34 @@ namespace ServerWebAPI
     {
         static void Main(string[] args)
         {
+            //Create the first Categories
+            var c1 = new Category("Beverages");
+            var c2 = new Category("Condiments");
+            var c3 = new Category("Confections");
+            CategoryTable.Add(c1);
+            CategoryTable.Add(c2);
+            CategoryTable.Add(c3);
+
             //Configure and start the server
             var server = new TcpListener(IPAddress.Loopback, 5000);
             server.Start();
             Console.WriteLine("Server Started");
 
-            Hashtable categoryHashTable = new Hashtable();
-
             //Loop to get multiple requests
             while (true)
             {
-            var client = new NetworkClient(server.AcceptTcpClient());
-                Console.WriteLine("Client accepted");
+                var client = new NetworkClient(server.AcceptTcpClient());
+                Console.WriteLine("\nNew Client accepted");
 
                 var message = client.Read();
 
                 Console.WriteLine($"Client message '{message}'");
 
                 var request = JsonSerializer.Deserialize<Request>(message, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
+                    
                 var response = request.Manage();
 
-                Console.WriteLine(request.ToString());
+                Console.WriteLine("Returning : " + response.ToJson());
                 client.Write(response.ToJson());
             }
 
